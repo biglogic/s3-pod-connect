@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app: s3-provider
+  name: s3-provider
+spec:
+  selector:
+    matchLabels:
+      app: s3-provider
+  template:
+    metadata:
+      labels:
+        app: s3-provider
+    spec:
+      containers:
+        - name: s3fuse
+          image: 116981775839.dkr.ecr.us-east-1.amazonaws.com/s3/s3fs:1
+          command: ["/bin/sh", "-c" , "sleep 3000"]
+          securityContext:
+            privileged: true
+          env:
+           - name: AWS_ACCESS_KEY_ID
+             valueFrom:
+               secretKeyRef:
+                name: aws-secret
+                key: access_key
+           - name: AWS_SECRET_ACCESS_KEY
+             valueFrom:
+              secretKeyRef:
+               name: aws-secret
+               key: secret_key    
+          volumeMounts:
+            - name: devfuse
+              mountPath: /dev/fuse
+            - name: mntdatas3fs
+              mountPath: /mnt/s3:shared
+      volumes:
+        - name: devfuse
+          hostPath:
+            path: /dev/fuse
+        - name: mntdatas3fs
+          hostPath:
+            path: /mnt/s3data

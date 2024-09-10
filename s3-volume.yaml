@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: s3fs-pod
+spec:
+  selector:
+    matchLabels:
+      name: fluentd-elasticsearch
+  template:
+    metadata:
+      labels:
+        name: fluentd-elasticsearch
+    spec:
+      containers:
+      - name: s3fs-container
+        image: 116981775839.dkr.ecr.us-east-1.amazonaws.com/s3/s3fs:latest  # Use an image that supports installation of s3fs
+        securityContext:
+           privileged: true
+          # command: ["sh", "-c", "yum install -y s3fs-fuse && s3fs my-ak-bucket-101 /mnt/s3 -o passwd_file=/etc/passwd-s3fs && sleep 3600"]
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          echo "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" > /etc/passwd-s3fs;
+          chmod 600 /etc/passwd-s3fs;
+          mkdir -p /mnt/s3;
+          s3fs my-ak-bucket-101 /mnt/s3 -o passwd_file=/etc/passwd-s3fs -o url=https://s3.amazonaws.com -o use_path_request_style -o nonempty -d -f;
+          # Keep the container running
+          # sleep infinity;
+        volumeMounts:
+        - mountPath: /mnt/s3:shared
+          name: volume-path-container
+        env:
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: aws-secret
+              key: access_key
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aws-secret
+              key: secret_key
+      volumes: 
+      - name: volume-path-container
+        # mount /data/foo, but only if that directory already exists
+        hostPath:
+            path: /tmp/s3-bucket-1 # directory location on host
+              #  type: DirectoryOrCreate # this field is optional
+
